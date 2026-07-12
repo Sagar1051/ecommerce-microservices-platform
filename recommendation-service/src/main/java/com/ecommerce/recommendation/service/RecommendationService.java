@@ -1,6 +1,6 @@
 package com.ecommerce.recommendation.service;
 
-import com.ecommerce.recommendation.client.AnthropicClient;
+import com.ecommerce.recommendation.client.GroqClient;
 import com.ecommerce.recommendation.client.ProductDto;
 import com.ecommerce.recommendation.client.ProductServiceClient;
 import com.ecommerce.recommendation.dto.RecommendationResponse;
@@ -20,7 +20,7 @@ public class RecommendationService {
 
     private final CollaborativeFilteringService collaborativeFilteringService;
     private final ProductServiceClient productServiceClient;
-    private final AnthropicClient anthropicClient;
+    private final GroqClient groqClient;
     private final UserInteractionRepository interactionRepository;
 
     public RecommendationResponse recommend(Long userId, int limit) {
@@ -40,7 +40,7 @@ public class RecommendationService {
         List<ProductDto> candidates = productServiceClient.fetchProducts(candidateIds);
         List<String> recentProductNames = getRecentProductNames(userId);
 
-        Map<Long, String> llmReasons = anthropicClient.rankAndExplain(candidates, recentProductNames, limit);
+        Map<Long, String> llmReasons = groqClient.rankAndExplain(candidates, recentProductNames, limit);
         boolean aiRanked = !llmReasons.isEmpty();
 
         List<RecommendationResponse.RecommendationItem> items = aiRanked
