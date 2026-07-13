@@ -195,14 +195,17 @@ GET /api/recommendations/{userId}?limit=5
 
 ## Screenshots
 
-*(add these before submitting/sharing the repo)*
+**All 7 services registered with Eureka**
+![Eureka dashboard](docs/screenshots/eureka-dashboard.png)
 
-- [ ] Eureka dashboard showing all services registered
-- [ ] Docker Desktop showing all 4 containers running
-- [ ] Postman: successful product creation
-- [ ] Postman: recommendation response with `"aiRanked": true`
-- [ ] IntelliJ project structure
+**Docker infrastructure + project structure**
+![Docker and project structure](docs/screenshots/intellij-structure.png)
 
+**Product service**
+![Product fetch](docs/screenshots/postman-product-create.png)
+
+**AI-powered recommendation — real Groq-generated explanations**
+![Recommendation response](docs/screenshots/postman-recommendation.png)
 ## Future improvements
 
 - [ ] Docker Compose file to run all Spring Boot services (not just infra)
