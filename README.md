@@ -1,76 +1,222 @@
-# eCommerce platform (microservices + AI recommendations)
+# Cloud-Native Ecommerce Platform
 
-Fresh multi-module Spring Boot project. Built module by module — right now
-`eureka-server`, `api-gateway`, and `auth-service` are fully working.
-The rest (`product-service`, `cart-service`, `order-service`,
-`payment-service`, `recommendation-service`) are stubs: they boot, register
-with Eureka, and are ready to be filled in next.
+A production-style ecommerce backend built as eight independent Spring Boot
+microservices, with event-driven communication via Kafka and an AI-powered
+recommendation engine using collaborative filtering + LLM re-ranking.
 
-## Stack
-- Java 21, Spring Boot 3.3.4, Spring Cloud 2023.0.3
-- Eureka (service discovery), Spring Cloud Gateway (routing)
-- PostgreSQL, Redis, Kafka (via docker-compose)
-- JWT auth (jjwt 0.12.6), BCrypt password hashing
-- Lombok 1.18.34 (pinned — this version is confirmed to work with Java 21,
-  so you won't hit the old `ExceptionInInitializerError at EndPosTable` issue)
+Built from scratch as a placement portfolio project — every service was
+designed, coded, debugged, and tested end to end.
 
-## Run order
+## Features
 
-1. Start infra:
+- **JWT authentication** — register/login with BCrypt password hashing
+- **Product catalog** — full CRUD, pagination, category filtering, search
+- **Redis-backed shopping cart** — fast add/remove/update, no relational overhead
+- **Order processing** — reads the cart via service-to-service calls, persists
+  the order, publishes events
+- **Mock payment gateway** — simulates realistic success/failure rates per
+  payment method (card, UPI, COD)
+- **AI-powered recommendations** — Kafka-driven collaborative filtering,
+  re-ranked and explained by an LLM (Groq / Llama 3.1)
+- **Service discovery** — every service registers with Eureka; no hardcoded
+  hosts or ports anywhere
+- **Single entry point** — Spring Cloud Gateway routes all external traffic
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Language / runtime | Java 21, Spring Boot 3.3.4, Spring Cloud 2023.0.3 |
+| Service discovery | Netflix Eureka |
+| API gateway | Spring Cloud Gateway |
+| Messaging | Apache Kafka |
+| Databases | PostgreSQL (Auth, Product, Order, Payment, Recommendation), Redis (Cart) |
+| Auth | JWT (jjwt), Spring Security, BCrypt |
+| AI | Groq API (Llama 3.1 8B) for recommendation re-ranking |
+| Containerization | Docker, Docker Compose |
+| Build | Maven (multi-module) |
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Client([Client]) --> Gateway[API Gateway :8080]
+
+    Gateway --> Auth[Auth Service :8081]
+    Gateway --> Product[Product Service :8082]
+    Gateway --> Cart[Cart Service :8083]
+    Gateway --> Order[Order Service :8084]
+    Gateway --> Payment[Payment Service :8085]
+
+    Order -. reads cart via Eureka .-> Cart
+
+    Product -- publishes ProductViewedEvent --> Kafka[(Kafka)]
+    Order -- publishes OrderPlacedEvent --> Kafka
+    Payment -- publishes PaymentProcessedEvent --> Kafka
+
+    Kafka -- consumed by --> Rec[Recommendation Service :8086]
+    Rec -- collaborative filtering candidates --> Groq[Groq LLM API]
+    Groq -- ranked + explained --> Rec
+
+    Auth --> PG[(PostgreSQL)]
+    Product --> PG
+    Order --> PG
+    Payment --> PG
+    Rec --> PG
+    Cart --> Redis[(Redis)]
+
+    Auth -.registers.-> Eureka[[Eureka Discovery]]
+    Product -.registers.-> Eureka
+    Cart -.registers.-> Eureka
+    Order -.registers.-> Eureka
+    Payment -.registers.-> Eureka
+    Rec -.registers.-> Eureka
+    Gateway -.registers.-> Eureka
+```
+
+## Folder structure
+
+```
+ecommerce-platform/
+├── eureka-server/           # Service discovery
+├── api-gateway/             # Single entry point, routes to all services
+├── auth-service/            # JWT register/login
+├── product-service/         # Catalog CRUD, publishes view events
+├── cart-service/             # Redis-backed cart
+├── order-service/           # Places orders, publishes order events
+├── payment-service/          # Mock payment gateway
+├── recommendation-service/   # Collaborative filtering + LLM re-ranking
+├── docker/                   # Postgres multi-db init script
+├── docker-compose.yml        # Postgres, Redis, Kafka, Zookeeper
+└── pom.xml                   # Parent Maven module
+```
+
+Each service follows the same internal layout:
+`controller → service → repository → entity`, with `dto`, `exception`, and
+`config` packages as needed.
+
+## How to run locally
+
+**Prerequisites:** Java 21, Maven, Docker Desktop, an IDE (IntelliJ recommended)
+
+1. **Start infrastructure**
+   ```bash
+   docker compose up -d
    ```
-   docker-compose up -d
-   ```
-2. Start `eureka-server` first (port 8761) — visit http://localhost:8761 to
-   confirm it's up.
-3. Start `auth-service` (port 8081).
-4. Start `api-gateway` (port 8080) last, once services are registered.
+   This brings up PostgreSQL, Redis, Kafka, and Zookeeper.
 
-Each module has its own `main` class — run them individually from IntelliJ
-(right-click → Run), or `mvn spring-boot:run` inside each module folder.
+2. **Set required environment variables**
 
-## Try the auth service
+   | Variable | Purpose | Where to get it |
+   |---|---|---|
+   | `GROQ_API_KEY` | Powers the LLM recommendation re-ranking | Free, no card required — [console.groq.com](https://console.groq.com) |
 
-Register:
+3. **Configure your database connection**
+
+   Each service's `application.yml` expects a local PostgreSQL database.
+   Update the `datasource` block in each service to match your local
+   Postgres username/password, or export them as environment variables.
+
+4. **Run the services, in this order** (each has its own `main` class —
+   run from your IDE or `mvn spring-boot:run` inside each module):
+   1. `eureka-server`
+   2. `api-gateway`
+   3. `auth-service`
+   4. `product-service`
+   5. `cart-service`
+   6. `order-service`
+   7. `payment-service`
+   8. `recommendation-service`
+
+5. **Verify it's up:** open `http://localhost:8761` — you should see all
+   seven services registered.
+
+## API endpoints
+
+All requests go through the gateway at `http://localhost:8080`.
+
+**Auth**
 ```
-POST http://localhost:8080/api/auth/register
-Content-Type: application/json
-
-{
-  "fullName": "Jack Sharma",
-  "email": "jack@example.com",
-  "password": "password123"
-}
+POST /api/auth/register
+POST /api/auth/login
 ```
 
-Login:
+**Product**
 ```
-POST http://localhost:8080/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "jack@example.com",
-  "password": "password123"
-}
+GET    /api/products              # paginated, ?category= or ?search=
+GET    /api/products/{id}         # also fires a "viewed" event
+POST   /api/products
+PUT    /api/products/{id}
+DELETE /api/products/{id}
 ```
 
-Both return a JWT you'll attach as `Authorization: Bearer <token>` to
-protected endpoints in the other services once they're built out.
+**Cart**
+```
+POST   /api/cart/{userId}/add
+GET    /api/cart/{userId}
+DELETE /api/cart/{userId}/remove/{productId}
+DELETE /api/cart/{userId}/clear
+```
 
-## Build order (what's next)
+**Order**
+```
+POST /api/orders/{userId}/place
+GET  /api/orders/{orderId}
+GET  /api/orders/user/{userId}
+```
 
-1. ✅ Auth service — JWT register/login
-2. Product service — CRUD + PostgreSQL, publishes view/purchase events to Kafka
-3. Cart service — Redis-backed
-4. Order service — consumes cart, publishes order events to Kafka
-5. Payment service — mock gateway integration
-6. Recommendation service — consumes Kafka events, does collaborative
-   filtering, then calls an LLM to re-rank + explain picks
+**Payment**
+```
+POST /api/payments/process
+GET  /api/payments/order/{orderId}
+```
 
-## Common gotchas already handled here
+**Recommendations**
+```
+GET /api/recommendations/{userId}?limit=5
+```
 
-- Parent POM pins Spring Boot 3.3.4 + Spring Cloud 2023.0.3 — these versions
-  are compatible with each other and with Java 21.
-- Lombok is pinned to 1.18.34 in every module's `pom.xml`, not left to
-  whatever version the Spring Initializr default pulls in.
-- `application.yml` only (no mixing with `.properties` files) to avoid
-  syntax collisions.
+## AI recommendation flow
+
+1. Every product view and completed order publishes a Kafka event
+2. `recommendation-service` consumes both topics and records each as a
+   weighted signal (`VIEW` or `PURCHASE`) per user
+3. **Collaborative filtering** (plain SQL/Java, no AI): finds users with
+   overlapping interaction history, surfaces what they engaged with that
+   the current user hasn't — classic "people who bought X also bought Y"
+4. The candidate product IDs are enriched with real product details via a
+   service-to-service call to `product-service`
+5. The candidates + the user's recent history are sent to **Groq's Llama
+   3.1** model, which picks the best matches and writes a short explanation
+   for each
+6. If the LLM call fails or isn't configured, the system **falls back
+   gracefully** to the plain collaborative-filtering order with a generic
+   reason — the feature degrades, it never breaks
+
+## Screenshots
+
+*(add these before submitting/sharing the repo)*
+
+- [ ] Eureka dashboard showing all services registered
+- [ ] Docker Desktop showing all 4 containers running
+- [ ] Postman: successful product creation
+- [ ] Postman: recommendation response with `"aiRanked": true`
+- [ ] IntelliJ project structure
+
+## Future improvements
+
+- [ ] Docker Compose file to run all Spring Boot services (not just infra)
+- [ ] Unit and integration tests (JUnit, Mockito)
+- [ ] Global exception handling audit across all services
+- [ ] AWS deployment (EC2, RDS, S3 for product images)
+- [ ] CI/CD via GitHub Actions
+- [ ] Redis caching for product/category reads
+- [ ] Role-based access control (ADMIN / SELLER / CUSTOMER)
+- [ ] Centralized logging and monitoring (Prometheus, Grafana)
+
+## Security note
+
+Local development credentials in `application.yml` files are placeholders
+for local-only Postgres/Redis instances. Do not reuse these passwords
+anywhere else. The Groq API key is loaded from an environment variable and
+is never committed to the repository.
