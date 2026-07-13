@@ -208,7 +208,7 @@ reason — the feature degrades, it never breaks the request.
 ![Docker and project structure](docs/screenshots/intellij-structure.png)
 
 **Product service**
-![Product fetch](docs/screenshots/postman-product-create.png)
+![Product fetch](docs/screenshots/postman-product-fetch.png)
 
 **AI-powered recommendation — real Groq-generated explanations**
 ![Recommendation response](docs/screenshots/postman-recommendation.png)
