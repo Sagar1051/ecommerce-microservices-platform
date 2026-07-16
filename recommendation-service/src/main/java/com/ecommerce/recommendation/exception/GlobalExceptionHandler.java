@@ -1,4 +1,4 @@
-package com.ecommerce.order.exception;
+package com.ecommerce.recommendation.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -13,38 +13,6 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    @ExceptionHandler(OrderNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(
-            OrderNotFoundException ex,
-            HttpServletRequest request) {
-
-        ErrorResponse response = ErrorResponse.builder()
-                .timestamp(Instant.now().toString())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error(HttpStatus.NOT_FOUND.name())
-                .message(ex.getMessage())
-                .path(request.getRequestURI())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-    }
-
-    @ExceptionHandler(EmptyCartException.class)
-    public ResponseEntity<ErrorResponse> handleEmptyCart(
-            EmptyCartException ex,
-            HttpServletRequest request) {
-
-        ErrorResponse response = ErrorResponse.builder()
-                .timestamp(Instant.now().toString())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error(HttpStatus.BAD_REQUEST.name())
-                .message(ex.getMessage())
-                .path(request.getRequestURI())
-                .build();
-
-        return ResponseEntity.badRequest().body(response);
-    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(
