@@ -30,7 +30,6 @@ public class CartService {
         CartItem existing = (CartItem) hashOps.get(key, field);
 
         if (existing != null) {
-            // Already in cart — bump the quantity instead of duplicating the entry
             existing.setQuantity(existing.getQuantity() + request.quantity());
             hashOps.put(key, field, existing);
         } else {

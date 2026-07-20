@@ -32,7 +32,10 @@ public class OrderController {
             @ApiResponse(responseCode = "400", description = "Cart is empty — nothing to order")
     })
     public ResponseEntity<OrderResponse> placeOrder(@PathVariable Long userId) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.placeOrder(userId));
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(orderService.placeOrder(userId));
     }
 
     @GetMapping("/{orderId}")
@@ -42,6 +45,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     public ResponseEntity<OrderResponse> getOrder(@PathVariable Long orderId) {
+
         return ResponseEntity.ok(orderService.findById(orderId));
     }
 
@@ -51,6 +55,7 @@ public class OrderController {
             @ApiResponse(responseCode = "200", description = "Orders retrieved successfully (empty list if none)")
     })
     public ResponseEntity<List<OrderResponse>> getOrdersForUser(@PathVariable Long userId) {
+
         return ResponseEntity.ok(orderService.findByUser(userId));
     }
 }

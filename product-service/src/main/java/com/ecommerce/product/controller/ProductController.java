@@ -24,6 +24,13 @@ public class ProductController {
 
     private final ProductService productService;
 
+    @GetMapping("/current-user")
+    public ResponseEntity<String> currentUser(
+            @RequestHeader(value = "X-Authenticated-User", required = false) String email) {
+
+        return ResponseEntity.ok(email);
+    }
+    
     @PostMapping
     @Operation(summary = "Create a product")
     @ApiResponses({

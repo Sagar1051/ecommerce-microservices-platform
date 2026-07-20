@@ -26,6 +26,7 @@ public class OrderService {
 
     @Transactional
     public OrderResponse placeOrder(Long userId) {
+
         CartClientResponse cart = cartServiceClient.getCart(userId);
 
         if (cart == null || cart.items() == null || cart.items().isEmpty()) {
@@ -39,20 +40,19 @@ public class OrderService {
                 .build();
 
         for (CartClientResponse.CartItemDto cartItem : cart.items()) {
+
             OrderItem item = OrderItem.builder()
                     .productId(cartItem.productId())
                     .productName(cartItem.productName())
                     .price(cartItem.price())
                     .quantity(cartItem.quantity())
                     .build();
+
             order.addItem(item);
         }
 
         Order saved = orderRepository.save(order);
 
-        // Fire the event and clear the cart only after the order is durably
-        // saved — if either of these steps fails, at least the order exists
-        // and can be reconciled manually rather than silently lost.
         eventPublisher.publishOrderPlaced(saved);
         cartServiceClient.clearCart(userId);
 
@@ -60,18 +60,23 @@ public class OrderService {
     }
 
     public OrderResponse findById(Long orderId) {
+
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
+
         return toResponse(order);
     }
 
     public List<OrderResponse> findByUser(Long userId) {
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+
+        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     private OrderResponse toResponse(Order order) {
+
         List<OrderResponse.OrderItemResponse> items = order.getItems().stream()
                 .map(item -> OrderResponse.OrderItemResponse.builder()
                         .productId(item.getProductId())
